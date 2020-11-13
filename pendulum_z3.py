@@ -1,5 +1,7 @@
 from z3 import *
 import math
+import json
+
 
 '''
 ;code was modified from    https://rosettacode.org/wiki/Animate_a_pendulum#Racket
@@ -62,7 +64,7 @@ def recompute_angles_time_step(time_step):
     sp = float(theta_d + (time_step * a_output))
     return sp, theta_d
 
-def get_parameter_errors(motor_damping_proxy, sp):
+def get_parameter_errors(motor_damping_proxy, sp, index):
     global theta_d
     theta_d1_sim2 = (1 - motor_damping_proxy[0]) * sp
     '''
@@ -70,42 +72,48 @@ def get_parameter_errors(motor_damping_proxy, sp):
     sim2 values: reset ang. position and velocity --> everytime step simulation is called, RESET. 
                     --> use values obtained from our equations of motion [this code]
     '''
-    theta_d0_sim1_list = [all values form pybullet at time steps]
-    theta_d0_sim2_list = [all values form pybullet at time steps]
-    err0 = abs(theta_d0_sim1 - theta_d0_sim2) # error for ang. positions
-    err1 = abs(theta_d1_sim1 - theta_d1_sim2) # error for ang. velocities --> just this if position doesnt pan out
-    err2 = abs(theta_d2_sim1 - theta_d2_sim2) # error for ang. acceleration -->may not wanna consider this
-    return err0, err1, err2
+    # err0 = abs(theta_d0_sim1 - theta_d0_sim2) # error for ang. positions
+    err1 = theta_d1_sim2 - theta_d1_sim1_list[index]# error for ang. velocities --> just this if position doesnt pan out
+    #err2 = abs(theta_d2_sim1 - theta_d2_sim2) # error for ang. acceleration -->may not wanna consider this
+    return err1#, err1, err2
 
 def solve_for_damping_proxy():
     sp = 0.0
     global theta_d
+    n = 22000
     for i in range(n):
-        sp, theta_d0_sim1 = recompute_angles_time_step(i)
-        theta_d0_sim2_list.append(theta_d0_sim1)
+        if i in time_steps_list:
+            sp, theta_d0_sim2 = recompute_angles_time_step(i)
+            theta_d0_sim2_list.append(theta_d0_sim2)
 
     motor_damping_proxy = Reals('motor_damping_proxy')
-     # i don't know what constraint to put here, ask Roman
-
-    solve(get_parameter_errors(motor_damping_proxy, sp, index) < 0.5) # change this to tuple comparision - check in Z3.
+    s = Solver()
+    # go over each timestep(same `time-step` as that in pybullet), and solve for motor damping proxy
+    for index, ts in enumerate(time_steps_list):
+        s.add(get_parameter_errors(motor_damping_proxy, sp, index) < 0.5) # change this to tuple comparision - check in Z3.
+        s.check()
+        # print(s.statistics()) # --> this is a handy tool to do the final analysis
+        m = s.model()
+        print(m)
+        #print(mdp)
+        # if mdp:
+        #     print("time_step: {}, motor_damping_proxy: {}", ts, mdp[0])
     print(theta_x_list)
     print(theta_y_list)
 
+
+theta_d0_sim1_list = [] # pybullet position
+theta_d1_sim1_list = [] # pybullet velocity
+theta_d0_sim2_list = [] # z3 position
+theta_d1_sim2_list = [] # z3 velocity
+time_steps_list = []
+f = open("data_time_step.txt", "r")
+data_string = f.read()
+data_blob = json.loads(data_string)
+
+for key in sorted(data_blob.keys()):
+    theta_d0_sim1_list.append(data_blob[key]["position"])
+    theta_d1_sim1_list.append(data_blob[key]["velocity"])
+    time_steps_list.append(float(key))
+
 solve_for_damping_proxy()
-# def recompute_angles(motor_damping_proxy):
-#     global theta_d, theta
-#     theta = theta + theta_d * time_step
-#     a_output = accel(theta)
-#     theta_d = motor_damping_proxy * (theta_d + (time_step * a_output))
-#     return theta, theta_d
-
-# def recompute_angles_new(motor_damping_proxy):
-#     global theta_d, theta
-#     theta = theta + theta_d * time_step
-#     a_output = accel(theta)
-#     second_part = float(theta_d + (time_step * a_output))
-#     print(theta_d)
-#     theta_d = motor_damping_proxy[0] * second_part
-#     return theta_d
-
-
