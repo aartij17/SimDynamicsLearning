@@ -58,7 +58,7 @@ p.setJointMotorControlArray(
 #load the block thatwe are trying to avoid
 
 
-targetPositions=[0]*(number_of_links_urdf) ; targetPositions[0]=3.14*(36/360) ; #set desired joint angles in radians  
+targetPositions=[0]*(number_of_links_urdf) ; targetPositions[0] = 3.14*(36/360) ; #set desired joint angles in radians
 targetVelocities=[0]*(number_of_links_urdf) ;  # set desired joint velocities  
 
 #move the robot according to desited joint angles and desired joint velocities using PD control

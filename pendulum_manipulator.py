@@ -147,7 +147,7 @@ while i < 22000:
     b = p.getJointStates(bodyUniqueId=pendulum_uniqueId_z3, jointIndices=list(range(number_of_links_urdf)))
     time_step = time_step + 1
     if a[0][0] not in previous_theta:
-        data[a[0][0]] = {
+        data[i] = {
             "position": a[0][0],
             "velocity": a[0][1]
         }
