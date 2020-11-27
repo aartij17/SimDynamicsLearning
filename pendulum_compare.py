@@ -135,40 +135,44 @@ p.resetJointState(
     targetVelocity=0
 )
 
-time_step = 0
-f = open("position_velocity_pybullet_data.txt", "w")
-previous_theta = []
-previous_theta_d = 0
-# check equality
-data = {}
-i = 0
+f_z3 = open("position_velocity_z3_data.txt")
+lines = f_z3.read()
+f_z3.close()
+z3_data_blob = json.loads(lines)
+z3_sorted_ts = sorted(map(lambda x: int(x), z3_data_blob.keys()))
 
-"""
-take the values from Z3, and call resetJointState, 
-{"0": {"position": 1.0, "velocity": 0.0}, "23": {"position": 1.0141867807385068, 
-"velocity": 0.40087002089676194}, "196": {"position": 1.015961884242391, 
-"velocity": 0.4260248409322054}, "247": {"position": 1.0587030949993685, 
-"velocity": 0.8321196745638638}, "431":
-"""
+
+f_pybullet = open("position_velocity_pybullet_data.txt")
+lines = f_pybullet.read()
+f_pybullet.close()
+pybullet_data_blob = json.loads(lines)
+pybullet_sorted_ts = sorted(map(lambda x: int(x), pybullet_data_blob.keys()))
+
+i = 0
+print(z3_sorted_ts)
 while i < 22000:
+    print(i)
+    if i not in z3_sorted_ts:
+        i += 1
+        continue
+    print("out of that loop!")
+    p.resetJointState(
+        bodyUniqueId=pendulum_uniqueId_pybullet,
+        jointIndex=0,
+        targetValue=z3_data_blob[str(i)]["position"],
+        targetVelocity=z3_data_blob[str(i)]["velocity"]
+    )
+
+    p.resetJointState(
+        bodyUniqueId=pendulum_uniqueId_z3,
+        jointIndex=0,
+        targetValue=pybullet_data_blob[str(i)]["position"],
+        targetVelocity=pybullet_data_blob[str(i)]["velocity"]
+    )
     a = p.getJointStates(bodyUniqueId=pendulum_uniqueId_pybullet, jointIndices=list(range(number_of_links_urdf)))
     b = p.getJointStates(bodyUniqueId=pendulum_uniqueId_z3, jointIndices=list(range(number_of_links_urdf)))
-    time_step = time_step + 1
-    if a[0][0] not in previous_theta:
-        data[i] = {
-            "position": a[0][0],
-            "velocity": a[0][1]
-        }
-        previous_theta.append(a[0][0])
+
     i += 1
 
-f.write(json.dumps(data))
-f.close()
 
-# print('')
-# print('joint info: ')
-# print(a)
-# print('joint positions :', a[0][0] ) # theta
-# print('joint velocities : ', a[0][1]) # theta_d
-# print('joint reaction forces : ', a[0][2])
-# print('applied motor torque : ', a[0][3])
+

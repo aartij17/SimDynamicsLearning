@@ -27,9 +27,9 @@ import json
 '''
 
 n = 10  # change this to number of iterations later on
-theta = 0
+theta_d0_sim2 = 0
 # theta_d = init_velocity
-theta_d = 1  # hard-coded
+theta_d1_sim2 = 1  # hard-coded
 
 length_to_mass = 1
 
@@ -56,20 +56,18 @@ theta_y_list = []
 '''
 For z3, only simple arithmetic/boolean operations are allowed to act on symbolic variables. 
 '''
-
-
 def recompute_angles_time_step(time_step):
-    global theta_d, theta, theta_x_list, theta_y_list
-    theta_x_list.append(theta_x(theta))
-    theta_y_list.append(theta_y(theta))
-    theta = theta + theta_d * time_step
-    a_output = accel(theta)
-    sp = float(theta_d + (time_step * a_output))
-    return sp, theta_d
+    global theta_d1_sim2, theta_d0_sim2, theta_x_list, theta_y_list
+    theta_x_list.append(theta_x(theta_d0_sim2))
+    theta_y_list.append(theta_y(theta_d0_sim2))
+    theta_d0_sim2 = theta_d0_sim2 + theta_d1_sim2 * time_step
+    a_output = accel(theta_d0_sim2)
+    sp = float(theta_d1_sim2 + (time_step * a_output))
+    return sp, theta_d0_sim2
 
 
 def get_parameter_errors(motor_damping_proxy, sp, index):
-    global theta_d
+    global theta_d1_sim2
     theta_d1_sim2 = (1 - motor_damping_proxy) * sp
     '''
     sim1 values: regular pybullet simulation 
@@ -85,13 +83,12 @@ def get_parameter_errors(motor_damping_proxy, sp, index):
 
 def solve_for_damping_proxy():
     sp = 0.0
-    global theta_d
+    global theta_d1_sim2
     n = 22000
     for i in range(n):
         if i in time_steps_list:
             sp, theta_d0_sim2 = recompute_angles_time_step(i)
             theta_d0_sim2_list.append(theta_d0_sim2)
-
     motor_damping_proxy0 = Real('motor_damping_proxy')
     motor_damping_proxy = motor_damping_proxy0
     # go over each timestep(same `time-step` as that in pybullet), and solve for motor damping proxy
@@ -108,6 +105,7 @@ def solve_for_damping_proxy():
         # print("time_step: {}, mdp: {}".format(ts, mdp_float))
 
 
+
 theta_d0_sim1_list = []  # pybullet position
 theta_d1_sim1_list = []  # pybullet velocity
 theta_d0_sim2_list = []  # z3 position
@@ -115,7 +113,7 @@ theta_d1_sim2_list = []  # z3 velocity
 time_steps_list = []
 
 mdp_list = []
-f = open("data_time_step.txt", "r")
+f = open("position_velocity_pybullet_data.txt", "r")
 data_string = f.read()
 data_blob = json.loads(data_string)
 
@@ -130,4 +128,7 @@ solve_for_damping_proxy()
 with open("mdp_list.txt", "w") as f:
     for i in mdp_list:
         f.write(str(i))
+        f.write("\n")
 
+
+# collect_all_stats()
