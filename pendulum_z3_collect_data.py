@@ -84,7 +84,7 @@ def get_parameter_errors(motor_damping_proxy, sp, index):
 def solve_for_damping_proxy():
     sp = 0.0
     global theta_d1_sim2
-    n = 22000
+    n = 10
     for i in range(n):
         if i in time_steps_list:
             sp, theta_d0_sim2 = recompute_angles_time_step(i)

@@ -124,7 +124,7 @@ j = 0
 p.resetJointState(
     bodyUniqueId=pendulum_uniqueId_pybullet,
     jointIndex=0,
-    targetValue=1,
+    targetValue=2,
     targetVelocity=0
 )
 
@@ -150,7 +150,7 @@ take the values from Z3, and call resetJointState,
 "velocity": 0.4260248409322054}, "247": {"position": 1.0587030949993685, 
 "velocity": 0.8321196745638638}, "431":
 """
-while i < 22000:
+while i < 10:
     a = p.getJointStates(bodyUniqueId=pendulum_uniqueId_pybullet, jointIndices=list(range(number_of_links_urdf)))
     b = p.getJointStates(bodyUniqueId=pendulum_uniqueId_z3, jointIndices=list(range(number_of_links_urdf)))
     time_step = time_step + 1

@@ -150,7 +150,7 @@ pybullet_sorted_ts = sorted(map(lambda x: int(x), pybullet_data_blob.keys()))
 
 i = 0
 print(z3_sorted_ts)
-while i < 22000:
+while i < 10:
     print(i)
     if i not in z3_sorted_ts:
         i += 1

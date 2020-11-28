@@ -1,3 +1,9 @@
+d0: position  
+d1: velocity  
+
+sim1: pybullet  
+sim2: z3 (using equations of motion)  
+
 ## Run the following files in order
 
 1. `pendulum_manipulator.py`: This file loads 2 single-link URDFs and is run `n` times. The position and velocity at each time-step is written to a file `position_velocity_pybullet_data.txt`. The format of the data written is as follows:

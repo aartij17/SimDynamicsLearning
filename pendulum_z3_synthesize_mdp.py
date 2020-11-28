@@ -56,15 +56,24 @@ theta_y_list = []
 '''
 For z3, only simple arithmetic/boolean operations are allowed to act on symbolic variables. 
 '''
+# TODO: Recheck validity wrt equations of motion
 def recompute_angles_time_step(time_step):
     global theta_d1_sim2, theta_d0_sim2, theta_x_list, theta_y_list
     theta_x_list.append(theta_x(theta_d0_sim2))
     theta_y_list.append(theta_y(theta_d0_sim2))
+    print(theta_d1_sim2) # --> always 1 right now.
     theta_d0_sim2 = theta_d0_sim2 + theta_d1_sim2 * time_step
+
     a_output = accel(theta_d0_sim2)
     sp = float(theta_d1_sim2 + (time_step * a_output))
     return sp, theta_d0_sim2
 
+def get_parameter_errors_second(motor_damping_proxy, sp, index):
+    global theta_d1_sim2
+    theta_d1_sim2 = (1 - motor_damping_proxy) * sp
+    print(theta_d1_sim2)
+    err1 = theta_d1_sim1_list[index] - theta_d1_sim2
+    return err1
 
 def get_parameter_errors(motor_damping_proxy, sp, index):
     global theta_d1_sim2
@@ -75,8 +84,16 @@ def get_parameter_errors(motor_damping_proxy, sp, index):
                     --> use values obtained from our equations of motion [this code]
     '''
     # err0 = abs(theta_d0_sim1 - theta_d0_sim2) # error for ang. positions
-    err1 = theta_d1_sim2 - theta_d1_sim1_list[
-        index]  # error for ang. velocities --> just this if position doesnt pan out
+    #err1 = theta_d1_sim2 - theta_d1_sim1_list[
+        #index]  # error for ang. velocities --> just this if position doesnt pan out
+    # if theta_d1_sim1_list[index] < 0:
+    #     err1 = theta_d1_sim2 - theta_d1_sim1_list[index]
+    # else:
+    #
+    #     err1 = theta_d1_sim1_list[index] - theta_d1_sim2
+    err1 = theta_d1_sim2 - theta_d1_sim1_list[index]
+    #err1 = theta_d1_sim1_list[index] - theta_d1_sim2
+    #print(err1)
     # err2 = abs(theta_d2_sim1 - theta_d2_sim2) # error for ang. acceleration -->may not wanna consider this
     return err1  # , err1, err2
 
@@ -84,7 +101,7 @@ def get_parameter_errors(motor_damping_proxy, sp, index):
 def solve_for_damping_proxy():
     sp = 0.0
     global theta_d1_sim2
-    n = 22000
+    n = 10
     for i in range(n):
         if i in time_steps_list:
             sp, theta_d0_sim2 = recompute_angles_time_step(i)
@@ -94,8 +111,9 @@ def solve_for_damping_proxy():
     # go over each timestep(same `time-step` as that in pybullet), and solve for motor damping proxy
     for index, ts in enumerate(time_steps_list):
         s = Solver()
-        s.add(get_parameter_errors(motor_damping_proxy, sp,
-                                   index) < 0.5)  # change this to tuple comparison - check in Z3.
+        s.add(And(get_parameter_errors(motor_damping_proxy, sp,
+                                   index) < 0.5, get_parameter_errors_second(motor_damping_proxy, sp,
+                                   index) > -0.5))  # change this to tuple comparison - check in Z3.
         s.check()
         # print(s.statistics()) # --> this is a handy tool to do the final analysis
         m = s.model()
