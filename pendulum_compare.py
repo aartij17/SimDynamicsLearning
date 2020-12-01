@@ -1,7 +1,6 @@
 import argparse
 import json
 
-
 # state the number of links in your urdf (edit this as necessary)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -19,8 +18,8 @@ import os
 import pybullet as p
 # imports the pybullet_data module (used to figure out where the robot model needs to be loaded from)
 import pybullet_data
+
 # allows python script to be called with inputs
-import argparse
 
 # loads the pybullet physics simulator (with no robot yet)
 p.connect(p.GUI)
@@ -141,16 +140,16 @@ f_z3.close()
 z3_data_blob = json.loads(lines)
 z3_sorted_ts = sorted(map(lambda x: int(x), z3_data_blob.keys()))
 
-
 f_pybullet = open("position_velocity_pybullet_data.txt")
 lines = f_pybullet.read()
 f_pybullet.close()
 pybullet_data_blob = json.loads(lines)
 pybullet_sorted_ts = sorted(map(lambda x: int(x), pybullet_data_blob.keys()))
 
+timesteps = json.load(open("config.json"))["time_steps"]
 i = 0
 print(z3_sorted_ts)
-while i < 10:
+while i < timesteps:
     print(i)
     if i not in z3_sorted_ts:
         i += 1
@@ -173,6 +172,3 @@ while i < 10:
     b = p.getJointStates(bodyUniqueId=pendulum_uniqueId_z3, jointIndices=list(range(number_of_links_urdf)))
 
     i += 1
-
-
-

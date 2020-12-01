@@ -142,6 +142,8 @@ previous_theta_d = 0
 # check equality
 data = {}
 i = 0
+config_file = open("config.json")
+config = json.load(config_file)
 
 """
 take the values from Z3, and call resetJointState, 
@@ -150,7 +152,7 @@ take the values from Z3, and call resetJointState,
 "velocity": 0.4260248409322054}, "247": {"position": 1.0587030949993685, 
 "velocity": 0.8321196745638638}, "431":
 """
-while i < 10:
+while i < config["time_steps"]:
     a = p.getJointStates(bodyUniqueId=pendulum_uniqueId_pybullet, jointIndices=list(range(number_of_links_urdf)))
     b = p.getJointStates(bodyUniqueId=pendulum_uniqueId_z3, jointIndices=list(range(number_of_links_urdf)))
     time_step = time_step + 1
