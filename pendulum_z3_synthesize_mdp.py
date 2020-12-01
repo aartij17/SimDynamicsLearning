@@ -27,7 +27,7 @@ from z3 import *
 (animate (pendulum   150   0.01   (/ 1 10)   1.1   -3 ))
 '''
 
-z3_position = 0
+z3_position = 1
 z3_velocity = 1  # hard-coded
 
 length_to_mass = 1
@@ -62,14 +62,14 @@ def recompute_angles_time_step(time_step):
     global z3_velocity, z3_position, z3_position_x_list, z3_position_y_list
     z3_position_x_list.append(z3_position_x(z3_position))
     z3_position_y_list.append(z3_position_y(z3_position))
-    print("z3_position: {}, z3_velocity: {}".format(z3_position, z3_velocity))  # --> always 1 right now.
+    #print("z3_position: {}, z3_velocity: {}".format(z3_position, z3_velocity))
     z3_position = z3_position + z3_velocity * time_step
+    #print("z3_position: {}, z3_velocity: {}".format(z3_position, z3_velocity))
     a_output = accel(z3_position)
     sp = float(z3_velocity + (time_step * a_output))
     return sp, z3_position
 
-
-def get_parameter_errors_second(motor_damping_proxy, sp, index):
+def get_parameter_errors_second(motor_damping_proxy, sp, index, ts):
     global z3_velocity
     z3_velocity = (1 - motor_damping_proxy) * sp
     # print(z3_velocity)
@@ -77,7 +77,7 @@ def get_parameter_errors_second(motor_damping_proxy, sp, index):
     return err1
 
 
-def get_parameter_errors(motor_damping_proxy, sp, index):
+def get_parameter_errors(motor_damping_proxy, sp, index, ts):
     global z3_velocity
     z3_velocity = (1 - motor_damping_proxy) * sp
     '''
@@ -96,13 +96,13 @@ position_velocity_dict = {}
 def solve_for_damping_proxy():
     global z3_velocity, z3_position
     for index, ts in enumerate(time_steps_list):
-        sp, z3_position = recompute_angles_time_step(index)
+        sp, z3_position = recompute_angles_time_step(ts)
         motor_damping_proxy0 = Real('motor_damping_proxy')
         motor_damping_proxy = motor_damping_proxy0
         s = Solver()
-        s.add(And(get_parameter_errors(motor_damping_proxy, sp,
-                                       index) < 0.5, get_parameter_errors_second(motor_damping_proxy, sp,
-                                                                                 index) > -0.5))
+        s.add(Or(get_parameter_errors_second(motor_damping_proxy, sp,
+                                       index, ts) < 0.001, get_parameter_errors_second(motor_damping_proxy, sp,
+                                                                                 index, ts) > -0.001))
         s.check()
         # print(s.statistics()) # --> this is a handy tool to do the final analysis
         m = s.model()
@@ -110,14 +110,19 @@ def solve_for_damping_proxy():
         denominator = int(m[motor_damping_proxy0].as_fraction().denominator)
         mdp_list.append(float(numerator) / denominator)
         z3_velocity = 1 - mdp_list[-1] * sp
-        z3_position = z3_position + z3_velocity * index
-        position_velocity_dict[str(index)] = {
+        z3_position = z3_position + z3_velocity * ts
+
+        a_output = accel(z3_position)
+        sp = float(z3_velocity + (ts * a_output))
+        z3_velocity = 1 - mdp_list[-1] * sp
+        print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
+              .format(ts, z3_position, z3_velocity, sp))
+
+        position_velocity_dict[str(ts)] = {
             "position": z3_position,
             "velocity": z3_velocity,
             "mdp": mdp_list[-1]
         }
-
-    # print(position_velocity_dict)
     f = open("position_velocity_z3_data.txt", "w")
     f.write(json.dumps(position_velocity_dict))
 

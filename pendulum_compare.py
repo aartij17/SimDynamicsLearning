@@ -11,8 +11,8 @@ if __name__ == '__main__':
     print('type: ', type(arguments.number_of_links_urdf))
     number_of_links_urdf = int(arguments.number_of_links_urdf)  # define the number of links
 
-# I ran this scrip[t using python 3.7.2
-# import the os mudule (needed when p.loadURDF() method is invoked)
+# I ran this script using python 3.7.2
+# import the os module (needed when p.loadURDF() method is invoked)
 import os
 # imports the pybullet simulator API
 import pybullet as p
@@ -68,7 +68,7 @@ p.setGravity(0, 0, -9.8)
 
 # sets real time simulation
 p.setRealTimeSimulation(
-    enableRealTimeSimulation=1)  # now we dont have to call p.stepSimulation() in order to advance the timestep of the simulation environment
+    enableRealTimeSimulation=1)  # now we dont have to call p.stepSimulation() in order to advance the time step of the simulation environment
 
 # turn off all motors so that joints are not stiffened for the rest of the simulations
 p.setJointMotorControlArray(
@@ -130,7 +130,7 @@ p.resetJointState(
 p.resetJointState(
     bodyUniqueId=pendulum_uniqueId_z3,
     jointIndex=0,
-    targetValue=2,
+    targetValue=1,
     targetVelocity=0
 )
 
@@ -148,13 +148,10 @@ pybullet_sorted_ts = sorted(map(lambda x: int(x), pybullet_data_blob.keys()))
 
 timesteps = json.load(open("config.json"))["time_steps"]
 i = 0
-print(z3_sorted_ts)
 while i < timesteps:
-    print(i)
     if i not in z3_sorted_ts:
         i += 1
         continue
-    print("out of that loop!")
     p.resetJointState(
         bodyUniqueId=pendulum_uniqueId_pybullet,
         jointIndex=0,
