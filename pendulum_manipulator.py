@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 
 
 # state the number of links in your urdf (edit this as necessary)
@@ -69,7 +70,7 @@ p.setGravity(0, 0, -9.8)
 
 # sets real time simulation
 p.setRealTimeSimulation(
-    enableRealTimeSimulation=1)  # now we dont have to call p.stepSimulation() in order to advance the timestep of the simulation environment
+    enableRealTimeSimulation=0)  # now we dont have to call p.stepSimulation() in order to advance the timestep of the simulation environment
 
 # turn off all motors so that joints are not stiffened for the rest of the simulations
 p.setJointMotorControlArray(
@@ -124,14 +125,14 @@ j = 0
 p.resetJointState(
     bodyUniqueId=pendulum_uniqueId_pybullet,
     jointIndex=0,
-    targetValue=2,
+    targetValue=15,
     targetVelocity=0
 )
 
 p.resetJointState(
     bodyUniqueId=pendulum_uniqueId_z3,
     jointIndex=0,
-    targetValue=2,
+    targetValue=15,
     targetVelocity=0
 )
 
@@ -155,14 +156,12 @@ take the values from Z3, and call resetJointState,
 while i < config["time_steps"]:
     a = p.getJointStates(bodyUniqueId=pendulum_uniqueId_pybullet, jointIndices=list(range(number_of_links_urdf)))
     b = p.getJointStates(bodyUniqueId=pendulum_uniqueId_z3, jointIndices=list(range(number_of_links_urdf)))
-    time_step = time_step + 1
-    if a[0][0] not in previous_theta:
-        data[i] = {
-            "position": a[0][0],
-            "velocity": a[0][1]
-        }
-        previous_theta.append(a[0][0])
+    data[i] = {
+        "position": a[0][0],
+        "velocity": a[0][1]
+    }
     i += 1
+    p.stepSimulation()
 
 f.write(json.dumps(data))
 f.close()

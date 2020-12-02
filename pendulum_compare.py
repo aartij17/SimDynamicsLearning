@@ -1,5 +1,6 @@
 import argparse
 import json
+import time
 
 # state the number of links in your urdf (edit this as necessary)
 if __name__ == '__main__':
