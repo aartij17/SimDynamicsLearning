@@ -160,7 +160,7 @@ def solve_mdp_analysis(initial_position, initial_velocity):
         if s.check() != z3.sat:
             if len(mdp_list) == 0:
                 print("Empty mdp!")
-                return -1000000
+                return 0
             print("mdp_before_return:{}".format(mdp_list))
             mdp_list_last = mdp_list[-1]
             #mdp_list = []
