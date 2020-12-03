@@ -1,17 +1,18 @@
 import argparse
 import json
 import math
+import time
 
 number_of_links_urdf = 1
 # state the number of links in your urdf (edit this as necessary)
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='example script to demonstrate pybullet simulator and control of a 2D N-link robot')  # add capability of user input
-    parser.add_argument('-num_links', '--number_of_links_urdf', help='number of links in urdf', type=int,
-                        default=1)  # set default input to 1 if none is given
-    arguments = parser.parse_args()
-    print('type: ', type(arguments.number_of_links_urdf))
-    number_of_links_urdf = int(arguments.number_of_links_urdf)  # define the number of links
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser(
+#         description='example script to demonstrate pybullet simulator and control of a 2D N-link robot')  # add capability of user input
+#     parser.add_argument('-num_links', '--number_of_links_urdf', help='number of links in urdf', type=int,
+#                         default=1)  # set default input to 1 if none is given
+#     arguments = parser.parse_args()
+#     print('type: ', type(arguments.number_of_links_urdf))
+#     number_of_links_urdf = int(arguments.number_of_links_urdf)  # define the number of links
 
 # I ran this scrip[t using python 3.7.2
 # import the os mudule (needed when p.loadURDF() method is invoked)
@@ -90,7 +91,7 @@ targetPositions[0] = 3.14 * (36 / 360)  # set desired joint angles in radians
 targetVelocities = [0] * (number_of_links_urdf)  # set desired joint velocities
 
 initial_position = 15
-initial_velocity = 0
+initial_velocity = 1
 
 # move the robot according to desited joint angles and desired joint velocities using PD control
 p.setJointMotorControlArray(
@@ -189,7 +190,12 @@ def simulate_pendulums(init_position=None, init_velocity=None):
         }
         i += 1
         p.stepSimulation()
+        #time.sleep(1)
+
 
     f.write(json.dumps(data))
     f.close()
 
+
+if __name__ == "__main__":
+    simulate_pendulums()

@@ -39,7 +39,7 @@ def accel(t):
     #     y+=((-1)**k)*(t**(1+2*k))/factorial(1+2*k)
     # return y
     #return -((16 * t) * (math.pi - t))/((5 * math.pow(math.pi, 2)) - (4 * t * (math.pi - t)))
-    return math.sin(t)
+    return -9.8 * math.sin(t)
 
 
 def theta_dd():
@@ -94,44 +94,40 @@ def solve_for_damping_proxy():
         motor_damping_proxy0 = Real('motor_damping_proxy')
         motor_damping_proxy = motor_damping_proxy0
         s = Solver()
-        # position_error /= 1.05
-        # velocity_error /= 1.05
-        # position_error = config["position_error"]
-        # velocity_error = config["velocity_error"]
-        # if index == 0: # loosen the constraint
-        #     position_error = config["position_error"] / config["constraint_scale"]
-        #     velocity_error = config["velocity_error"] / config["constraint_scale"]
-        # if index == len(time_steps_list)/2: # tighten the constraint
-        #     position_error = config["position_error"] / config["constraint_scale"]
-        #     velocity_error = config["velocity_error"] / config["constraint_scale"]
-        # else:
-        #     position_error = config["position_error"]
-        #     velocity_error = config["velocity_error"]
-
         s.add(And(get_velocity_errors(motor_damping_proxy, sp,index, ts) < velocity_error,
                   get_velocity_errors(motor_damping_proxy, sp,index, ts) > -velocity_error,
                   get_position_errors(index) < position_error,
-                  get_position_errors(index) > -position_error))
+                  get_position_errors(index) > -position_error)
+              )
 
-        print(s.check())
-        m = s.model()
-        numerator = int(m[motor_damping_proxy0].as_fraction().numerator)
-        denominator = int(m[motor_damping_proxy0].as_fraction().denominator)
-        mdp_list.append(float(numerator) / denominator)
+        if s.check() != z3.sat:
+            mdp_list.append(0)
+            position_velocity_dict[str(ts)] = {
+                "position": z3_position,
+                "velocity": z3_velocity,
+                "mdp": mdp_list[-1]
+            }
+            continue
 
-        z3_velocity = (1 - (sum(mdp_list)/len(mdp_list))) * sp
-        z3_position = z3_position + (z3_velocity * TS)
-        #z3_velocity = (1 - mdp_list[-1]) * sp
+        else:
+            m = s.model()
+            numerator = int(m[motor_damping_proxy0].as_fraction().numerator)
+            denominator = int(m[motor_damping_proxy0].as_fraction().denominator)
+            mdp_list.append(float(numerator) / denominator)
 
-        a_output = accel(z3_position)
-        sp = float(z3_velocity + (TS * a_output))
-        z3_velocity = (1 - mdp_list[-1]) * sp
-        z3_position = (z3_position + (z3_velocity * TS))# % (2*math.pi)
-        print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
-              .format(ts, z3_position, z3_velocity, sp))
+            z3_velocity = (1 - (sum(mdp_list)/len(mdp_list))) * sp
+            z3_position = z3_position + (z3_velocity * TS)
+            #z3_velocity = (1 - mdp_list[-1]) * sp
+
+            a_output = accel(z3_position)
+            sp = float(z3_velocity + (TS * a_output))
+            z3_velocity = (1 - mdp_list[-1]) * sp
+            z3_position = (z3_position + (z3_velocity * TS))# % (2*math.pi)
+            print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
+                  .format(ts, z3_position, z3_velocity, sp))
 
         position_velocity_dict[str(ts)] = {
-            "position": z3_position_old,
+            "position": z3_position,
             "velocity": z3_velocity,
             "mdp": mdp_list[-1]
         }
@@ -174,7 +170,7 @@ def solve_mdp_analysis(initial_position, initial_velocity):
         else:
             return -1000000
 
-        z3_velocity = (1 - (sum(mdp_list)/len(mdp_list))) * sp
+        z3_velocity = (1-mdp_list[-1]) * sp#(1 - (sum(mdp_list)/len(mdp_list))) * sp
         z3_position = z3_position + (z3_velocity * TS)
 
         a_output = accel(z3_position)
@@ -215,9 +211,25 @@ config_file = open("config.json")
 config = json.load(config_file)
 
 
-
-#solve_for_damping_proxy()
+init_synthesize()
+solve_for_damping_proxy()
 with open("mdp_list.txt", "w") as f:
     for i in mdp_list:
         f.write(str(i))
         f.write("\n")
+
+
+
+        # position_error /= 1.05
+        # velocity_error /= 1.05
+        # position_error = config["position_error"]
+        # velocity_error = config["velocity_error"]
+        # if index == 0: # loosen the constraint
+        #     position_error = config["position_error"] / config["constraint_scale"]
+        #     velocity_error = config["velocity_error"] / config["constraint_scale"]
+        # if index == len(time_steps_list)/2: # tighten the constraint
+        #     position_error = config["position_error"] / config["constraint_scale"]
+        #     velocity_error = config["velocity_error"] / config["constraint_scale"]
+        # else:
+        #     position_error = config["position_error"]
+        #     velocity_error = config["velocity_error"]

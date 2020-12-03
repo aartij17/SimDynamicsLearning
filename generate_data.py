@@ -29,11 +29,16 @@ for vel_index, vel in enumerate(initial_velocities):
         simulate_pendulums(pos, vel)
         init_synthesize()
         ret_val = solve_mdp_analysis(pos, vel)
-        #print("vel_index:: {}, pos_index: {}, RET VAL: {}".format(vel_index, pos_index, ret_val))
+        # print("vel_index:: {}, pos_index: {}, RET VAL: {}".format(vel_index, pos_index, ret_val))
         data_matrix[vel_index][pos_index] = ret_val
 
 
 print(data_matrix)
+
+plt.style.use('seaborn')
+plt.rcParams['figure.dpi'] = 300
+
+
 H = np.array(data_matrix)
 plt.imshow(H)
 plt.legend()
