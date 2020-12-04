@@ -116,13 +116,13 @@ p.setJointMotorControlArray(
 p.changeDynamics(
     bodyUniqueId=pendulum_uniqueId_pybullet,
     linkIndex=0,
-    jointDamping=0.1
+    jointDamping=0.5
 )
 
 p.changeDynamics(
     bodyUniqueId=pendulum_uniqueId_z3,
     linkIndex=0,
-    jointDamping=0.1
+    jointDamping=0.5
 )
 
 j = 0

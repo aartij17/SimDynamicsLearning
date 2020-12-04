@@ -22,7 +22,7 @@ error_velocities = [(a-b) for (a, b) in zip(z3_velocity, pb_velocity)]
 plt.figure(0)
 plt.plot(z3_ts, z3_mdp, label="motor damping proxy")
 plt.title("Motor Damping Proxy")
-# plt.legend()
+plt.legend()
 
 plt.figure(1)
 plt.plot(z3_ts, error_positions, label="positions")

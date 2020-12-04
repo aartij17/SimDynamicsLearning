@@ -68,24 +68,24 @@ def recompute_angles_time_step(time_step):
     z3_position_x_list.append(z3_position_x(z3_position))
     z3_position_y_list.append(z3_position_y(z3_position))
     z3_position_old = z3_position
-    z3_position = z3_position + z3_velocity * TS
-    a_output = accel(z3_position)
-    sp = float(z3_velocity + (TS * a_output))
+    z3_position = z3_position + (z3_velocity * TS)
+    sp = z3_velocity + (TS * accel(z3_position))
     return sp, z3_position
 
 def get_velocity_errors(motor_damping_proxy, sp, index, ts):
     global z3_velocity
-    z3_velocity_local = (1 - motor_damping_proxy) * sp
-    err1 = z3_velocity_local - pb_velocity_list[index]
+    z3_velocity = (1 - motor_damping_proxy) * sp
+    err1 = z3_velocity - pb_velocity_list[index] ## maybe index+1??
     return err1
 
 def get_position_errors(index):
     global z3_position
-    return z3_position%(2*math.pi) - pb_position_list[index]%(2*math.pi)
+    return z3_position - pb_position_list[index] ## maybe index+1??
 
 position_velocity_dict = {}
 
 def solve_for_damping_proxy():
+    fail_count = 0
     global z3_velocity, z3_position, z3_position_old
     position_error = config["position_error"]
     velocity_error = config["velocity_error"]
@@ -101,12 +101,13 @@ def solve_for_damping_proxy():
               )
 
         if s.check() != z3.sat:
-            mdp_list.append(0)
+            mdp_list.append(10000)
             position_velocity_dict[str(ts)] = {
                 "position": z3_position,
                 "velocity": z3_velocity,
                 "mdp": mdp_list[-1]
             }
+            fail_count += 1
             continue
 
         else:
@@ -114,15 +115,7 @@ def solve_for_damping_proxy():
             numerator = int(m[motor_damping_proxy0].as_fraction().numerator)
             denominator = int(m[motor_damping_proxy0].as_fraction().denominator)
             mdp_list.append(float(numerator) / denominator)
-
-            z3_velocity = (1 - (sum(mdp_list)/len(mdp_list))) * sp
-            z3_position = z3_position + (z3_velocity * TS)
-            #z3_velocity = (1 - mdp_list[-1]) * sp
-
-            a_output = accel(z3_position)
-            sp = float(z3_velocity + (TS * a_output))
             z3_velocity = (1 - mdp_list[-1]) * sp
-            z3_position = (z3_position + (z3_velocity * TS))# % (2*math.pi)
             print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
                   .format(ts, z3_position, z3_velocity, sp))
 
@@ -134,6 +127,7 @@ def solve_for_damping_proxy():
 
     f = open("position_velocity_z3_data.txt", "w")
     f.write(json.dumps(position_velocity_dict))
+    print("FAIL COUNT", fail_count)
 
 def solve_mdp_analysis(initial_position, initial_velocity):
     global z3_position, z3_velocity, mdp_list
