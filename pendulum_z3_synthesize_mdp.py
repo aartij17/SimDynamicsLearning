@@ -1,6 +1,6 @@
 import json
 import math
-
+from math import *
 from z3 import *
 
 '''
@@ -27,14 +27,19 @@ from z3 import *
 (animate (pendulum   150   0.01   (/ 1 10)   1.1   -3 ))
 '''
 
-z3_position = 1
+z3_position = 15
 z3_velocity = 1  # hard-coded
 
 length_to_mass = 1
-
+TS = float(1.0/240)
 
 def accel(t):
-    return -math.sin(t)
+    #y = 0
+    # for k in range(0,5,1):
+    #     y+=((-1)**k)*(t**(1+2*k))/factorial(1+2*k)
+    # return y
+    #return -((16 * t) * (math.pi - t))/((5 * math.pow(math.pi, 2)) - (4 * t * (math.pi - t)))
+    return -9.8 * math.sin(t)
 
 
 def theta_dd():
@@ -59,72 +64,133 @@ For z3, only simple arithmetic/boolean operations are allowed to act on symbolic
 
 # TODO: Recheck validity wrt equations of motion
 def recompute_angles_time_step(time_step):
-    global z3_velocity, z3_position, z3_position_x_list, z3_position_y_list
+    global z3_velocity, z3_position, z3_position_x_list, z3_position_y_list, z3_position_old
     z3_position_x_list.append(z3_position_x(z3_position))
     z3_position_y_list.append(z3_position_y(z3_position))
-    #print("z3_position: {}, z3_velocity: {}".format(z3_position, z3_velocity))
-    z3_position = z3_position + z3_velocity * time_step
-    #print("z3_position: {}, z3_velocity: {}".format(z3_position, z3_velocity))
-    a_output = accel(z3_position)
-    sp = float(z3_velocity + (time_step * a_output))
+    z3_position_old = z3_position
+    z3_position = z3_position + (z3_velocity * TS)
+    sp = z3_velocity + (TS * accel(z3_position))
     return sp, z3_position
 
-def get_parameter_errors_second(motor_damping_proxy, sp, index, ts):
+def get_velocity_errors(motor_damping_proxy, sp, index, ts):
     global z3_velocity
     z3_velocity = (1 - motor_damping_proxy) * sp
-    # print(z3_velocity)
-    err1 = pb_velocity_list[index] - z3_velocity
+    err1 = z3_velocity - pb_velocity_list[index] ## maybe index+1??
     return err1
 
-
-def get_parameter_errors(motor_damping_proxy, sp, index, ts):
-    global z3_velocity
-    z3_velocity = (1 - motor_damping_proxy) * sp
-    '''
-    sim1 values: regular pybullet simulation 
-    sim2 values: reset ang. position and velocity --> everytime step simulation is called, RESET. 
-                    --> use values obtained from our equations of motion [this code]
-    '''
-    err1 = z3_velocity - pb_velocity_list[index]
-    # err2 = abs(theta_d2_sim1 - theta_d2_sim2) # error for ang. acceleration -->may not wanna consider this
-    return err1  # , err1, err2
-
+def get_position_errors(index):
+    global z3_position
+    return z3_position - pb_position_list[index] ## maybe index+1??
 
 position_velocity_dict = {}
 
-
 def solve_for_damping_proxy():
-    global z3_velocity, z3_position
+    fail_count = 0
+    global z3_velocity, z3_position, z3_position_old
+    position_error = config["position_error"]
+    velocity_error = config["velocity_error"]
     for index, ts in enumerate(time_steps_list):
         sp, z3_position = recompute_angles_time_step(ts)
         motor_damping_proxy0 = Real('motor_damping_proxy')
         motor_damping_proxy = motor_damping_proxy0
         s = Solver()
-        s.add(Or(get_parameter_errors_second(motor_damping_proxy, sp,
-                                       index, ts) < 0.001, get_parameter_errors_second(motor_damping_proxy, sp,
-                                                                                 index, ts) > -0.001))
-        s.check()
-        # print(s.statistics()) # --> this is a handy tool to do the final analysis
-        m = s.model()
-        numerator = int(m[motor_damping_proxy0].as_fraction().numerator)
-        denominator = int(m[motor_damping_proxy0].as_fraction().denominator)
-        mdp_list.append(float(numerator) / denominator)
-        z3_velocity = 1 - mdp_list[-1] * sp
-        z3_position = z3_position + z3_velocity * ts
+        s.add(And(get_velocity_errors(motor_damping_proxy, sp,index, ts) < velocity_error,
+                  get_velocity_errors(motor_damping_proxy, sp,index, ts) > -velocity_error,
+                  get_position_errors(index) < position_error,
+                  get_position_errors(index) > -position_error)
+              )
 
-        a_output = accel(z3_position)
-        sp = float(z3_velocity + (ts * a_output))
-        z3_velocity = 1 - mdp_list[-1] * sp
-        print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
-              .format(ts, z3_position, z3_velocity, sp))
+        if s.check() != z3.sat:
+            mdp_list.append(10000)
+            position_velocity_dict[str(ts)] = {
+                "position": z3_position,
+                "velocity": z3_velocity,
+                "mdp": mdp_list[-1]
+            }
+            fail_count += 1
+            continue
+
+        else:
+            m = s.model()
+            numerator = int(m[motor_damping_proxy0].as_fraction().numerator)
+            denominator = int(m[motor_damping_proxy0].as_fraction().denominator)
+            mdp_list.append(float(numerator) / denominator)
+            z3_velocity = (1 - mdp_list[-1]) * sp
+            print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
+                  .format(ts, z3_position, z3_velocity, sp))
 
         position_velocity_dict[str(ts)] = {
             "position": z3_position,
             "velocity": z3_velocity,
             "mdp": mdp_list[-1]
         }
+
     f = open("position_velocity_z3_data.txt", "w")
     f.write(json.dumps(position_velocity_dict))
+    print("FAIL COUNT", fail_count)
+
+def solve_mdp_analysis(initial_position, initial_velocity):
+    global z3_position, z3_velocity, mdp_list
+    z3_position =  initial_position
+    z3_velocity = initial_velocity
+
+    position_error = config["position_error"]
+    velocity_error = config["velocity_error"]
+    print("IN MDP DEF!, init_pos: {}, init_velocity: {}".format(initial_position, initial_velocity))
+    for index, ts in enumerate(time_steps_list):
+        sp, z3_position = recompute_angles_time_step(ts)
+        motor_damping_proxy0 = Real('motor_damping_proxy')
+        motor_damping_proxy = motor_damping_proxy0
+        s = Solver()
+        s.add(And(get_velocity_errors(motor_damping_proxy, sp,index, ts) < velocity_error,
+                  get_velocity_errors(motor_damping_proxy, sp,index, ts) > -velocity_error,
+                  get_position_errors(index) < position_error,
+                  get_position_errors(index) > -position_error))
+
+        if s.check() != z3.sat:
+            if len(mdp_list) == 0:
+                print("Empty mdp!")
+                return 0
+            print("mdp_before_return:{}".format(mdp_list))
+            mdp_list_last = mdp_list[-1]
+            #mdp_list = []
+            return mdp_list_last#sum(mdp_list)/len(mdp_list)
+
+        m = s.model()
+        numerator = int(m[motor_damping_proxy0].as_fraction().numerator)
+        denominator = int(m[motor_damping_proxy0].as_fraction().denominator)
+        if numerator != 0:
+            mdp_list.append(float(numerator) / float(denominator))
+        else:
+            return -1000000
+
+        z3_velocity = (1-mdp_list[-1]) * sp#(1 - (sum(mdp_list)/len(mdp_list))) * sp
+        z3_position = z3_position + (z3_velocity * TS)
+
+        a_output = accel(z3_position)
+        sp = float(z3_velocity + (TS * a_output))
+        z3_velocity = (1 - mdp_list[-1]) * sp
+        z3_position = (z3_position + (z3_velocity * TS))# % (2*math.pi)
+        print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
+              .format(ts, z3_position, z3_velocity, sp))
+
+    print("mdp_list: {}".format(mdp_list))
+    average_mdp = mdp_list[-1]#sum(mdp_list) / len(mdp_list)
+    #mdp_list = []
+    return average_mdp
+
+
+def init_synthesize():
+    global pb_position_list, pb_velocity_list, time_steps_list, mdp_list
+    f = open("position_velocity_pybullet_data.txt", "r")
+    data_string = f.read()
+    data_blob = json.loads(data_string)
+    unsorted_ts = map(lambda x: int(x), data_blob.keys())
+    for key in sorted(unsorted_ts):
+        pb_position_list.append(data_blob[str(key)]["position"])
+        pb_velocity_list.append(data_blob[str(key)]["velocity"])
+        time_steps_list.append(key)
+    mdp_list = []
 
 
 pb_position_list = []  # pybullet position
@@ -134,22 +200,30 @@ z3_velocity_list = []  # z3 velocity
 time_steps_list = []
 
 mdp_list = []
-f = open("position_velocity_pybullet_data.txt", "r")
-data_string = f.read()
-data_blob = json.loads(data_string)
-
-unsorted_ts = map(lambda x: int(x), data_blob.keys())
 
 config_file = open("config.json")
 config = json.load(config_file)
 
-for key in sorted(unsorted_ts):
-    pb_position_list.append(data_blob[str(key)]["position"])
-    pb_velocity_list.append(data_blob[str(key)]["velocity"])
-    time_steps_list.append(key)
 
+init_synthesize()
 solve_for_damping_proxy()
 with open("mdp_list.txt", "w") as f:
     for i in mdp_list:
         f.write(str(i))
         f.write("\n")
+
+
+
+        # position_error /= 1.05
+        # velocity_error /= 1.05
+        # position_error = config["position_error"]
+        # velocity_error = config["velocity_error"]
+        # if index == 0: # loosen the constraint
+        #     position_error = config["position_error"] / config["constraint_scale"]
+        #     velocity_error = config["velocity_error"] / config["constraint_scale"]
+        # if index == len(time_steps_list)/2: # tighten the constraint
+        #     position_error = config["position_error"] / config["constraint_scale"]
+        #     velocity_error = config["velocity_error"] / config["constraint_scale"]
+        # else:
+        #     position_error = config["position_error"]
+        #     velocity_error = config["velocity_error"]

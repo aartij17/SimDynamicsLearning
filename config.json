@@ -1,3 +1,6 @@
 {
-  "time_steps": 10000
+  "time_steps": 2000,
+  "velocity_error": 0.001,
+  "position_error": 0.02,
+  "constraint_scale": 10
 }

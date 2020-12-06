@@ -1,16 +1,18 @@
 import argparse
 import json
+import math
+import time
 
-
+number_of_links_urdf = 1
 # state the number of links in your urdf (edit this as necessary)
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='example script to demonstrate pybullet simulator and control of a 2D N-link robot')  # add capability of user input
-    parser.add_argument('-num_links', '--number_of_links_urdf', help='number of links in urdf', type=int,
-                        default=1)  # set default input to 1 if none is given
-    arguments = parser.parse_args()
-    print('type: ', type(arguments.number_of_links_urdf))
-    number_of_links_urdf = int(arguments.number_of_links_urdf)  # define the number of links
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser(
+#         description='example script to demonstrate pybullet simulator and control of a 2D N-link robot')  # add capability of user input
+#     parser.add_argument('-num_links', '--number_of_links_urdf', help='number of links in urdf', type=int,
+#                         default=1)  # set default input to 1 if none is given
+#     arguments = parser.parse_args()
+#     print('type: ', type(arguments.number_of_links_urdf))
+#     number_of_links_urdf = int(arguments.number_of_links_urdf)  # define the number of links
 
 # I ran this scrip[t using python 3.7.2
 # import the os mudule (needed when p.loadURDF() method is invoked)
@@ -69,7 +71,7 @@ p.setGravity(0, 0, -9.8)
 
 # sets real time simulation
 p.setRealTimeSimulation(
-    enableRealTimeSimulation=1)  # now we dont have to call p.stepSimulation() in order to advance the timestep of the simulation environment
+    enableRealTimeSimulation=0)  # now we dont have to call p.stepSimulation() in order to advance the timestep of the simulation environment
 
 # turn off all motors so that joints are not stiffened for the rest of the simulations
 p.setJointMotorControlArray(
@@ -87,6 +89,9 @@ p.setJointMotorControlArray(
 targetPositions = [0] * (number_of_links_urdf)
 targetPositions[0] = 3.14 * (36 / 360)  # set desired joint angles in radians
 targetVelocities = [0] * (number_of_links_urdf)  # set desired joint velocities
+
+initial_position = 15
+initial_velocity = 1
 
 # move the robot according to desited joint angles and desired joint velocities using PD control
 p.setJointMotorControlArray(
@@ -111,37 +116,37 @@ p.setJointMotorControlArray(
 p.changeDynamics(
     bodyUniqueId=pendulum_uniqueId_pybullet,
     linkIndex=0,
-    jointDamping=0.1
+    jointDamping=0.5
 )
 
 p.changeDynamics(
     bodyUniqueId=pendulum_uniqueId_z3,
     linkIndex=0,
-    jointDamping=0.1
+    jointDamping=0.5
 )
 
 j = 0
 p.resetJointState(
     bodyUniqueId=pendulum_uniqueId_pybullet,
     jointIndex=0,
-    targetValue=2,
-    targetVelocity=0
+    targetValue=initial_position,
+    targetVelocity=initial_velocity
 )
 
 p.resetJointState(
     bodyUniqueId=pendulum_uniqueId_z3,
     jointIndex=0,
-    targetValue=2,
-    targetVelocity=0
+    targetValue=initial_position,
+    targetVelocity=initial_velocity
 )
 
 time_step = 0
-f = open("position_velocity_pybullet_data.txt", "w")
+
 previous_theta = []
 previous_theta_d = 0
 # check equality
 data = {}
-i = 0
+
 config_file = open("config.json")
 config = json.load(config_file)
 
@@ -152,25 +157,45 @@ take the values from Z3, and call resetJointState,
 "velocity": 0.4260248409322054}, "247": {"position": 1.0587030949993685, 
 "velocity": 0.8321196745638638}, "431":
 """
-while i < config["time_steps"]:
-    a = p.getJointStates(bodyUniqueId=pendulum_uniqueId_pybullet, jointIndices=list(range(number_of_links_urdf)))
-    b = p.getJointStates(bodyUniqueId=pendulum_uniqueId_z3, jointIndices=list(range(number_of_links_urdf)))
-    time_step = time_step + 1
-    if a[0][0] not in previous_theta:
+
+
+def simulate_pendulums(init_position=None, init_velocity=None):
+    global initial_velocity, initial_position, number_of_links_urdf, data, p
+    if init_velocity and init_velocity:
+        initial_velocity = init_velocity
+        initial_position = init_position
+
+    p.resetJointState(
+        bodyUniqueId=pendulum_uniqueId_pybullet,
+        jointIndex=0,
+        targetValue=initial_position,
+        targetVelocity=initial_velocity
+    )
+
+    p.resetJointState(
+        bodyUniqueId=pendulum_uniqueId_z3,
+        jointIndex=0,
+        targetValue=initial_position,
+        targetVelocity=initial_velocity
+    )
+    f = open("position_velocity_pybullet_data.txt", "w")
+
+    i = 0
+    while i < config["time_steps"]:
+        a = p.getJointStates(bodyUniqueId=pendulum_uniqueId_pybullet, jointIndices=list(range(number_of_links_urdf)))
+        b = p.getJointStates(bodyUniqueId=pendulum_uniqueId_z3, jointIndices=list(range(number_of_links_urdf)))
         data[i] = {
             "position": a[0][0],
             "velocity": a[0][1]
         }
-        previous_theta.append(a[0][0])
-    i += 1
+        i += 1
+        p.stepSimulation()
+        #time.sleep(1)
 
-f.write(json.dumps(data))
-f.close()
 
-# print('')
-# print('joint info: ')
-# print(a)
-# print('joint positions :', a[0][0] ) # theta
-# print('joint velocities : ', a[0][1]) # theta_d
-# print('joint reaction forces : ', a[0][2])
-# print('applied motor torque : ', a[0][3])
+    f.write(json.dumps(data))
+    f.close()
+
+
+if __name__ == "__main__":
+    simulate_pendulums()
