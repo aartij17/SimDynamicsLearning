@@ -76,6 +76,5 @@ Note that the timesteps at which this data is collected is same as the ones at w
 ```
 python3 pendulum_manipulator.py
 python3 pendulum_z3_synthesize_mdp.py
-python3 pendulum_z3_collect_data.py
 python3 pendulum_compare.py
 ```

@@ -17,7 +17,7 @@ from pendulum_manipulator import simulate_pendulums
 V       [0, 0, 0, 0, 0]
 """
 PI = math.pi
-initial_positions = [1, PI/2, PI, 1.5 * PI, 2 * PI]
+initial_positions = [15, 30, 45, 60, 75]#[1, PI/2, PI, 1.5 * PI, 2 * PI]
 initial_velocities = [0.5 * PI, PI, 1.5 * PI, 2 * PI, 2.5 * PI]#, 3 * PI, 3.5 * PI, 4 * PI]
 
 data_matrix = [[None]*len(initial_positions) for _ in range(len(initial_velocities))]
@@ -34,9 +34,6 @@ for vel_index, vel in enumerate(initial_velocities):
 
 
 print(data_matrix)
-
-plt.style.use('seaborn')
-plt.rcParams['figure.dpi'] = 300
 
 
 H = np.array(data_matrix)
