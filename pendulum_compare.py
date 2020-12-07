@@ -69,7 +69,7 @@ p.setGravity(0, 0, -9.8)
 
 # sets real time simulation
 p.setRealTimeSimulation(
-    enableRealTimeSimulation=1)  # now we dont have to call p.stepSimulation() in order to advance the time step of the simulation environment
+    enableRealTimeSimulation=0)  # now we dont have to call p.stepSimulation() in order to advance the time step of the simulation environment
 
 # turn off all motors so that joints are not stiffened for the rest of the simulations
 p.setJointMotorControlArray(
@@ -168,5 +168,5 @@ while i < timesteps:
     )
     a = p.getJointStates(bodyUniqueId=pendulum_uniqueId_pybullet, jointIndices=list(range(number_of_links_urdf)))
     b = p.getJointStates(bodyUniqueId=pendulum_uniqueId_z3, jointIndices=list(range(number_of_links_urdf)))
-
+    p.stepSimulation()
     i += 1

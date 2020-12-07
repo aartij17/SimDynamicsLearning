@@ -28,7 +28,7 @@ from z3 import *
 '''
 
 z3_position = 15
-z3_velocity = 1  # hard-coded
+z3_velocity = 1
 
 length_to_mass = 1
 TS = float(1.0/240)
@@ -116,8 +116,9 @@ def solve_for_damping_proxy():
             denominator = int(m[motor_damping_proxy0].as_fraction().denominator)
             mdp_list.append(float(numerator) / denominator)
             z3_velocity = (1 - mdp_list[-1]) * sp
-            print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
-                  .format(ts, z3_position, z3_velocity, sp))
+            if index % 100 == 0:
+                print("timestamp: {}, z3_position: {}, z3_velocity: {}"
+                      .format(ts, z3_position, z3_velocity))
 
         position_velocity_dict[str(ts)] = {
             "position": z3_position,
@@ -127,7 +128,7 @@ def solve_for_damping_proxy():
 
     f = open("position_velocity_z3_data.txt", "w")
     f.write(json.dumps(position_velocity_dict))
-    print("FAIL COUNT", fail_count)
+
 
 def solve_mdp_analysis(initial_position, initial_velocity):
     global z3_position, z3_velocity, mdp_list
