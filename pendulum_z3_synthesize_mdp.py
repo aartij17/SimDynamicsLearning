@@ -116,8 +116,8 @@ def solve_for_damping_proxy():
             denominator = int(m[motor_damping_proxy0].as_fraction().denominator)
             mdp_list.append(float(numerator) / denominator)
             z3_velocity = (1 - mdp_list[-1]) * sp
-            print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
-                  .format(ts, z3_position, z3_velocity, sp))
+            # print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
+            #       .format(ts, z3_position, z3_velocity, sp))
 
         position_velocity_dict[str(ts)] = {
             "position": z3_position,
@@ -171,8 +171,8 @@ def solve_mdp_analysis(initial_position, initial_velocity):
         sp = float(z3_velocity + (TS * a_output))
         z3_velocity = (1 - mdp_list[-1]) * sp
         z3_position = (z3_position + (z3_velocity * TS))# % (2*math.pi)
-        print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
-              .format(ts, z3_position, z3_velocity, sp))
+        # print("timestamp: {}, z3_position: {}, z3_velocity: {}, sp: {}"
+        #       .format(ts, z3_position, z3_velocity, sp))
 
     print("mdp_list: {}".format(mdp_list))
     average_mdp = mdp_list[-1]#sum(mdp_list) / len(mdp_list)
@@ -204,14 +204,17 @@ mdp_list = []
 config_file = open("config.json")
 config = json.load(config_file)
 
-
+import time
+start_time = time.time()
 init_synthesize()
 solve_for_damping_proxy()
 with open("mdp_list.txt", "w") as f:
     for i in mdp_list:
         f.write(str(i))
         f.write("\n")
+end_time = time.time()
 
+print("duration: {}".format(end_time - start_time))
 
 
         # position_error /= 1.05
